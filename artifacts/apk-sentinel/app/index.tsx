@@ -125,7 +125,7 @@ export default function HomeScreen() {
     if (!report) return [];
     return report.findings.filter((finding) => {
       const matchesSeverity = filter === 'all' || finding.severity === filter;
-      const haystack = `${finding.title} ${finding.category} ${finding.file}`.toLowerCase();
+      const haystack = `${finding.title} ${finding.category} ${finding.file} ${finding.summary} ${finding.impact} ${finding.fix} ${finding.attackSurface}`.toLowerCase();
       return matchesSeverity && haystack.includes(query.toLowerCase());
     });
   }, [filter, query, report]);
@@ -162,7 +162,7 @@ export default function HomeScreen() {
     const grouped = (Object.keys(severityLabels) as Severity[]).map((severity) => `${severityLabels[severity]}: ${report.findings.filter((item) => item.severity === severity).length}`).join(' | ');
     await Share.share({
       title: `تقرير APK Sentinel - ${report.fileName}`,
-      message: `APK Sentinel\nالملف: ${report.fileName}\nالنتيجة: ${score}/100 (${getRiskLabel(score)})\n${grouped}\n\nملاحظات الفحص:\n${report.findings.slice(0, 30).map((item) => `- [${severityLabels[item.severity]}] ${item.title}: ${item.fix}`).join('\n')}`,
+      message: `APK Sentinel\nالملف: ${report.fileName}\nالنتيجة: ${score}/100 (${getRiskLabel(score)})\nالقواعد: ${report.rulesEvaluated} · المطابقة: ${report.matchedRules}\n${grouped}\n\nملاحظات الفحص:\n${report.findings.slice(0, 30).map((item) => `- [${severityLabels[item.severity]}] ${item.title}: ${item.fix}`).join('\n')}\n\nحدود الفحص:\n${report.limitations.join('\n')}`,
     });
   };
 
