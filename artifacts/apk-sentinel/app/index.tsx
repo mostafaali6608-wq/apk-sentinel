@@ -20,8 +20,8 @@ import { useColors } from '@/hooks/useColors';
 import {
   getRiskLabel,
   getScore,
+  RULE_COUNT,
   scanArchive,
-  severityWeight,
   type ScanFinding,
   type ScanReport,
   type Severity,
@@ -37,6 +37,12 @@ const severityLabels: Record<Severity, string> = {
   low: 'منخفض',
   info: 'معلومة',
 };
+
+const confidenceLabels = {
+  high: 'ثقة مرتفعة',
+  medium: 'ثقة متوسطة',
+  low: 'ثقة منخفضة',
+} as const;
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
@@ -90,6 +96,12 @@ function FindingCard({ finding, colors }: { finding: ScanFinding; colors: Return
           <Text style={[styles.detailText, { color: colors.secondaryForeground }]}>{finding.fix}</Text>
           <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>مسار التهديد للتعلم</Text>
           <Text style={[styles.detailText, { color: colors.warning }]}>{finding.learning}</Text>
+           <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>خطوة التحقق اليدوي</Text>
+           <Text style={[styles.detailText, { color: colors.secondaryForeground }]}>{finding.verification}</Text>
+           <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>سطح الهجوم · مستوى الثقة</Text>
+           <Text style={[styles.detailText, { color: colors.accentForeground }]}>{finding.attackSurface} · {confidenceLabels[finding.confidence]}</Text>
+           <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>مراجع دفاعية</Text>
+           <Text style={[styles.detailText, { color: colors.secondaryForeground }]}>{finding.references.join(' · ')}</Text>
         </View>
       ) : (
         <Text style={[styles.expandHint, { color: colors.tint }]}>اضغط لعرض الأثر والإصلاح ومسار التهديد</Text>
@@ -182,7 +194,7 @@ export default function HomeScreen() {
           <View style={styles.heroOrb} />
           <Text style={[styles.heroKicker, { color: colors.warning }]}>فحص محلي · لا رفع للملف</Text>
           <Text style={[styles.heroTitle, { color: colors.foreground }]}>اعرف ما بداخل حزمة تطبيقك قبل إطلاقها.</Text>
-          <Text style={[styles.heroCopy, { color: colors.mutedForeground }]}>فاحص دفاعي يراجع APK وAAB وZIP بحثًا عن أسرار، إعدادات خطرة، مؤشرات WebView وBilling وسلسلة تهديد قابلة للتعلم.</Text>
+           <Text style={[styles.heroCopy, { color: colors.mutedForeground }]}>فاحص دفاعي يغطي {RULE_COUNT} قاعدة لمراجعة APK وAAB وZIP بحثًا عن أسرار، إعدادات خطرة، مؤشرات WebView وBilling وسلسلة تهديد قابلة للتعلم.</Text>
           <Pressable testID="pick-file" onPress={pickAndScan} disabled={isScanning} style={({ pressed }) => [styles.primaryButton, { backgroundColor: colors.primary, opacity: pressed || isScanning ? 0.72 : 1 }]}>
             {isScanning ? <ActivityIndicator color={colors.primaryForeground} /> : <Feather name="upload-cloud" size={19} color={colors.primaryForeground} />}
             <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>{isScanning ? 'جاري الفحص...' : 'اختر ملف APK أو AAB'}</Text>
@@ -209,8 +221,8 @@ export default function HomeScreen() {
               </View>
               <View style={styles.scoreCopy}>
                 <Text style={[styles.scoreLabel, { color: scoreColor(score, colors) }]}>{getRiskLabel(score)}</Text>
-                <Text style={[styles.scoreDescription, { color: colors.secondaryForeground }]}>{report.findings.length ? `تم العثور على ${report.findings.length} مؤشرًا يحتاج للمراجعة.` : 'لم تظهر مؤشرات ضمن القواعد الحالية.'}</Text>
-                <Text style={[styles.scoreMeta, { color: colors.mutedForeground }]}>{report.scannedFiles} ملف مقروء · {report.durationMs}ms</Text>
+     <Text style={[styles.scoreDescription, { color: colors.secondaryForeground }]}>{report.findings.length ? `تم العثور على ${report.findings.length} مؤشرًا يحتاج للمراجعة.` : 'لم تظهر مؤشرات ضمن القواعد الحالية.'}</Text>
+     <Text style={[styles.scoreMeta, { color: colors.mutedForeground }]}>{report.scannedFiles} ملف · {formatBytes(report.scannedBytes)} · {report.durationMs}ms</Text>
               </View>
             </View>
 
@@ -239,10 +251,17 @@ export default function HomeScreen() {
 
             {view === 'overview' && (
               <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.panelTitle, { color: colors.foreground }]}>ما الذي تم فحصه؟</Text>
-                <View style={styles.checkRow}><Feather name="check-circle" size={18} color={colors.success} /><Text style={[styles.checkText, { color: colors.secondaryForeground }]}>أكثر من 60 قاعدة دفاعية في الأسرار والشبكة والتشفير والصلاحيات.</Text></View>
+                 <Text style={[styles.panelTitle, { color: colors.foreground }]}>تغطية الفحص المتقدمة</Text>
+                 <Text style={[styles.panelIntro, { color: colors.mutedForeground }]}>تم تشغيل {report.rulesEvaluated} قاعدة دفاعية، وطابقت النتائج {report.matchedRules} قاعدة مختلفة. المطابقة مؤشر يحتاج تحققًا داخل المصدر أو artifact النهائي.</Text>
+                 <View style={styles.checkRow}><Feather name="check-circle" size={18} color={colors.success} /><Text style={[styles.checkText, { color: colors.secondaryForeground }]}>أسرار واعتمادات وTokens وJWT وTelegram وواجهات API.</Text></View>
                 <View style={styles.checkRow}><Feather name="check-circle" size={18} color={colors.success} /><Text style={[styles.checkText, { color: colors.secondaryForeground }]}>WebView وDeep Links وBilling وTelegram وPackers.</Text></View>
-                <View style={styles.checkRow}><Feather name="check-circle" size={18} color={colors.success} /><Text style={[styles.checkText, { color: colors.secondaryForeground }]}>كل نتيجة تعرض المؤشر والأثر والإصلاح ومسار تهديد تعليمي.</Text></View>
+                 <View style={styles.checkRow}><Feather name="check-circle" size={18} color={colors.success} /><Text style={[styles.checkText, { color: colors.secondaryForeground }]}>Manifest وAndroid components والتخزين والتشفير والمصادقة والخصوصية.</Text></View>
+                 <View style={styles.checkRow}><Feather name="check-circle" size={18} color={colors.success} /><Text style={[styles.checkText, { color: colors.secondaryForeground }]}>كل نتيجة تعرض المؤشر والأثر والإصلاح والتحقق والمراجع ومسار تهديد تعليمي.</Text></View>
+                 <View style={[styles.coverageGrid, { borderTopColor: colors.border }]}>
+                   <View><Text style={[styles.coverageNumber, { color: colors.tint }]}>{report.rulesEvaluated}</Text><Text style={[styles.coverageLabel, { color: colors.mutedForeground }]}>قاعدة فعّالة</Text></View>
+                   <View><Text style={[styles.coverageNumber, { color: colors.warning }]}>{report.matchedRules}</Text><Text style={[styles.coverageLabel, { color: colors.mutedForeground }]}>قاعدة مطابقة</Text></View>
+                   <View><Text style={[styles.coverageNumber, { color: colors.info }]}>{report.categories.length}</Text><Text style={[styles.coverageLabel, { color: colors.mutedForeground }]}>سطحًا</Text></View>
+                 </View>
                 <Pressable onPress={clearReport} style={[styles.secondaryButton, { borderColor: colors.border }]}>
                   <Feather name="refresh-cw" size={16} color={colors.tint} />
                   <Text style={[styles.secondaryButtonText, { color: colors.tint }]}>فحص ملف آخر</Text>
@@ -273,7 +292,7 @@ export default function HomeScreen() {
               <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.panelTitle, { color: colors.foreground }]}>مسارات تهديد دفاعية</Text>
                 <Text style={[styles.panelIntro, { color: colors.mutedForeground }]}>هذه المسارات تشرح كيف تفكر في الخطر من منظور دفاعي: مؤشر، أثر، ثم إصلاح. لا ينفذ التطبيق استغلالًا ولا يتجاوز حماية.</Text>
-                {report.findings.slice(0, 8).map((finding) => <View key={`${finding.id}:learning`} style={[styles.learningRow, { borderBottomColor: colors.border }]}><SeverityPill severity={finding.severity} colors={colors} /><View style={styles.learningCopy}><Text style={[styles.learningTitle, { color: colors.foreground }]}>{finding.title}</Text><Text style={[styles.learningText, { color: colors.warning }]}>{finding.learning}</Text></View></View>)}
+                 {report.findings.length ? report.findings.slice(0, 12).map((finding) => <View key={`${finding.id}:learning`} style={[styles.learningRow, { borderBottomColor: colors.border }]}><SeverityPill severity={finding.severity} colors={colors} /><View style={styles.learningCopy}><Text style={[styles.learningTitle, { color: colors.foreground }]}>{finding.title}</Text><Text style={[styles.learningText, { color: colors.warning }]}>{finding.learning}</Text><Text style={[styles.learningVerify, { color: colors.mutedForeground }]}>{finding.verification}</Text></View></View>) : <Text style={[styles.panelIntro, { color: colors.mutedForeground }]}>لا توجد مسارات تهديد مطابقة. هذا لا يثبت غياب المخاطر؛ راجع حدود الفحص والاختبارات الديناميكية.</Text>}
               </View>
             )}
 
@@ -282,7 +301,7 @@ export default function HomeScreen() {
                 <Text style={[styles.panelTitle, { color: colors.foreground }]}>جرد الحزمة</Text>
                 <Text style={[styles.panelIntro, { color: colors.mutedForeground }]}>تمت قراءة {report.scannedFiles} من أصل {report.totalFiles} ملفًا نصيًا أو قابلًا للاستخراج ضمن حدود أداء آمنة.</Text>
                 {report.categories.map((category) => <View key={category} style={[styles.inventoryRow, { borderBottomColor: colors.border }]}><Feather name="folder" size={16} color={colors.tint} /><Text style={[styles.inventoryText, { color: colors.secondaryForeground }]}>{category}</Text><Text style={[styles.inventoryCount, { color: colors.mutedForeground }]}>{report.findings.filter((item) => item.category === category).length}</Text></View>)}
-                <View style={[styles.limitNote, { backgroundColor: colors.overlay }]}><Feather name="info" size={15} color={colors.info} /><Text style={[styles.limitText, { color: colors.mutedForeground }]}>الفاحص لا يفك تشفير الملفات المحمية ولا يرفع أي محتوى. النتائج مؤشرات تحتاج تحققًا يدويًا.</Text></View>
+                 {report.limitations.map((limitation) => <View key={limitation} style={[styles.limitNote, { backgroundColor: colors.overlay }]}><Feather name="info" size={15} color={colors.info} /><Text style={[styles.limitText, { color: colors.mutedForeground }]}>{limitation}</Text></View>)}
               </View>
             )}
           </>
@@ -333,6 +352,9 @@ const styles = StyleSheet.create({
   stat: { flex: 1, borderRadius: 16, borderWidth: 1, padding: 13, gap: 3 },
   statNumber: { fontSize: 25, fontWeight: '700' },
   statLabel: { fontSize: 12 },
+  coverageGrid: { borderTopWidth: 1, paddingTop: 13, flexDirection: 'row', justifyContent: 'space-between' },
+  coverageNumber: { fontSize: 21, fontWeight: '700' },
+  coverageLabel: { fontSize: 11, marginTop: 2 },
   navBar: { borderRadius: 16, borderWidth: 1, padding: 5, flexDirection: 'row', gap: 4 },
   navItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 12 },
   navLabel: { fontSize: 11, fontWeight: '600' },
@@ -369,6 +391,7 @@ const styles = StyleSheet.create({
   learningCopy: { flex: 1, gap: 5 },
   learningTitle: { fontSize: 13, fontWeight: '700' },
   learningText: { fontSize: 12, lineHeight: 18 },
+  learningVerify: { fontSize: 11, lineHeight: 17, marginTop: 2 },
   inventoryRow: { borderBottomWidth: 1, paddingVertical: 11, flexDirection: 'row', gap: 10, alignItems: 'center' },
   inventoryText: { flex: 1, fontSize: 13 },
   inventoryCount: { fontSize: 12 },
